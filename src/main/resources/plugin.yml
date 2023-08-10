@@ -1,0 +1,16 @@
+name: Smash
+version: ${project.version}
+main: com.cheater78.smash.Smash
+api-version: 1.17
+authors: [ cheater78 ]
+commands:
+  smash:
+    description: Management for Smash
+    usage: /<command> args
+    permission: smash
+
+permissions:
+  smash:
+    default: op
+
+depend: []
