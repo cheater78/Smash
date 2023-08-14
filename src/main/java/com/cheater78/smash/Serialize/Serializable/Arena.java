@@ -14,7 +14,6 @@ import java.util.UUID;
 public class Arena implements Serializable {
 
     UUID uuid;
-
     private final String name;
     private final String world;
     private Location pos1;
@@ -65,6 +64,8 @@ public class Arena implements Serializable {
     public void setPlayerSpawns(ArrayList<Location> playerSpawns) { this.playerSpawns = playerSpawns; }
     public boolean addItemSpawn(Location itemSpawn){ return this.itemSpawns.add(itemSpawn); }
     public boolean addPlayerSpawn(Location playerSpawn){ return this.playerSpawns.add(playerSpawn); }
+    public void remItemSpawn(int index){ this.itemSpawns.remove(index); }
+    public void remPlayerSpawn(int index){ this.playerSpawns.remove(index); }
     public void setItemSpawnDelay(int itemSpawnDelay) { this.itemSpawnDelay = itemSpawnDelay; }
     public void setMobDespawnDelay(int mobDespawnDelay) { this.mobDespawnDelay = mobDespawnDelay; }
 

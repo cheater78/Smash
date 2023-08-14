@@ -1,4 +1,4 @@
-package com.cheater78.smash.Game.Elements;
+
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -7,7 +7,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Items {
+public class ItemsDep {
 
     // Items
     public static Item rocketLauncher  = new Item(     ChatColor.GOLD + "RocketLauncher",        Material.DIAMOND_PICKAXE);
@@ -27,6 +27,7 @@ public class Items {
                                                             + ChatColor.DARK_PURPLE +   "o"
                                                             + ChatColor.DARK_RED +      "m",            Material.RED_MUSHROOM);
     public static Item savePlat        = new Item(     ChatColor.WHITE + "SavingCloud",          Material.WHITE_DYE);
+    //TODO: ...
     public static Item sugarRush       = new Item(     ChatColor.WHITE + "SugarRush",            Material.SUGAR);
     public static Item opGapple        = new Item(     ChatColor.GOLD + "GodApple",              Material.ENCHANTED_GOLDEN_APPLE);
     public static Item spawnEgg        = new Item(     ChatColor.DARK_PURPLE + "MobSpawnEGG",    Material.CREEPER_SPAWN_EGG);

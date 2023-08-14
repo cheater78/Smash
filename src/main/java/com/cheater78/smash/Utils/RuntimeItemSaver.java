@@ -22,7 +22,7 @@ public class RuntimeItemSaver implements RecoverItems {
     @Override
     public void onJoin(Player p) {
         Map<Integer, ItemStack> inv = new HashMap<>();
-        for(Integer i = 0; i <= 45; i++)
+        for(int i = 0; i <= 45; i++)
             inv.put(i, p.getInventory().getItem(i));
         playerInvs.put(p.getUniqueId(), inv);
         playerLevel.put(p.getUniqueId(), p.getExp()+p.getLevel());
@@ -31,7 +31,7 @@ public class RuntimeItemSaver implements RecoverItems {
 
     @Override
     public void onLeave(Player p) {
-        p.setExp(playerLevel.get(p.getUniqueId()).floatValue() % 1);
+        p.setExp(playerLevel.get(p.getUniqueId()) % 1);
         p.setLevel((int) playerLevel.get(p.getUniqueId()).floatValue());
         for(int i = 0; i < playerInvs.get(p.getUniqueId()).size(); i++){
             p.getInventory().setItem(i, playerInvs.get(p.getUniqueId()).get(i));

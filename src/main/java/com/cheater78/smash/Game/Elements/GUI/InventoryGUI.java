@@ -2,7 +2,6 @@ package com.cheater78.smash.Game.Elements.GUI;
 
 import com.cheater78.smash.Config.PluginConfig;
 import com.cheater78.smash.Game.Elements.Item;
-import com.cheater78.smash.Game.Elements.ItemManager;
 import com.cheater78.smash.Game.Elements.Items;
 import com.cheater78.smash.Game.SmashGame;
 import org.bukkit.Bukkit;
@@ -45,7 +44,7 @@ public class InventoryGUI {
         }
     }
 
-    public void settingsGUI(Player p, SmashGame game){
+    public static void settingsGUI(Player p, SmashGame game){
         Inventory inv = Bukkit.createInventory(p, 54, "Smash Match Settings (" + game.getArena().getName() + ")");
         List<Item> guiItems = Items.getAll();
 

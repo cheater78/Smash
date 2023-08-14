@@ -16,6 +16,7 @@ public class PlayerState implements Serializable {
         return uuid;
     }
 
+    /*
     class ItemStack{
 
         class ItemMeta{
@@ -48,5 +49,7 @@ public class PlayerState implements Serializable {
 
     public int getPlayerLvl() { return playerLvl; }
     public float getPlayerExp() { return playerExp; }
+
+     */
 
 }

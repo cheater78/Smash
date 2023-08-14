@@ -1,16 +1,14 @@
 package com.cheater78.smash.Game;
 
-import com.cheater78.smash.API.RecoverItems;
 import com.cheater78.smash.Commands.smash;
 import com.cheater78.smash.Config.PluginConfig;
 import com.cheater78.smash.Game.Elements.GUI.InventoryGUI;
-import com.cheater78.smash.Game.Elements.ItemManager;
+import com.cheater78.smash.Game.Systems.ItemManager;
 import com.cheater78.smash.Serialize.Serializable.Arena;
 import com.cheater78.smash.Serialize.Serializable.Location;
 import com.cheater78.smash.Serialize.Serializer;
 import com.cheater78.smash.Smash;
 import com.cheater78.smash.Utils.BukkitWorldLoader;
-import com.cheater78.smash.World.RestoreWorld;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -19,9 +17,7 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.Executor;
 
 public class SmashGame {
 
@@ -48,7 +44,7 @@ public class SmashGame {
 
     public SmashGame(String name, String worldName, boolean fromFile){
         if(name == null    || worldName == null) throw new NullPointerException();
-        if(name.equals("") || worldName.equals("") ) throw new IllegalArgumentException();
+        if(name.isEmpty() || worldName.isEmpty()) throw new IllegalArgumentException();
 
         this.arenaPlayers = new ArrayList<>();
         this.specPlayers = new ArrayList<>();
@@ -56,13 +52,15 @@ public class SmashGame {
 
         if(!fromFile){
             // new SmashGame / Arena
+            World world = BukkitWorldLoader.getWorld(worldName); //implicit world creation
+            world.setKeepSpawnInMemory(false);
+            world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+            world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
+            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
             this.arena = new Arena(name, worldName);
-
         } else {
             this.arena = serializer.load(new UUID(name.hashCode(), name.hashCode()));
         }
-
-
 
         this.itemManager = new ItemManager();
         this.ready = arena.isValid();
@@ -74,7 +72,7 @@ public class SmashGame {
     public int getMaxExp() { return maxExp; }
     public boolean isReady(){ return ready; }
     public boolean isReady(Player p){
-        p.sendMessage(ChatColor.RED + "Arena is currently rebuilding!");
+        if(!ready && p != null) p.sendMessage(ChatColor.RED + "Arena is currently rebuilding!");
         return ready;
     }
 
@@ -127,6 +125,7 @@ public class SmashGame {
     public void onConfig(CommandSender s, String[] args){
 
         if(args.length < 3){ s.sendMessage(ChatColor.RED + "Wrong usage!(/smash config [arena] [option])"); return; }
+        if(!Smash.games.containsKey(args[1])){ s.sendMessage(ChatColor.RED + "Arena " + args[1] + " does not exist!"); return; }
 
         Location loc;
         loc = getConfigPos("pos1", s, args, true);
@@ -150,30 +149,45 @@ public class SmashGame {
         if(loc != null)
             arena.addItemSpawn(loc);
 
-
+        if(args.length == 4){
+            if(args[2].equalsIgnoreCase("remPlayerSpawn")){
+                Integer index = null;
+                try{ index = Integer.parseInt(args[3]);
+                }catch (Exception ignored){  }
+                if(index == null || index >= arena.getPlayerSpawns().size()){ s.sendMessage(ChatColor.RED + "/smash config " + args[1] + "remPlayerSpawn >" + args[3] + "< must be a valid index"); return; }
+                s.sendMessage(ChatColor.GREEN + "PlayerSpawn [" + index + "] at " + arena.getPlayerSpawns().get(index) + " removed successfully!");
+                arena.remPlayerSpawn(index);
+            }else if (args[2].equalsIgnoreCase("remItemSpawn")){
+                Integer index = null;
+                try{ index = Integer.parseInt(args[3]);
+                }catch (Exception ignored){  }
+                if(index == null || index >= arena.getItemSpawns().size()){ s.sendMessage(ChatColor.RED + "/smash config " + args[1] + "remItemSpawn >" + args[3] + "< must be a valid index"); return; }
+                s.sendMessage(ChatColor.GREEN + "ItemSpawn [" + index + "] at " + arena.getPlayerSpawns().get(index) + " removed successfully!");
+                arena.remItemSpawn(index);
+            }
+        }
     }
 
-    public boolean onSave(Player p){
+    public boolean onSave(CommandSender s){
         if(isGameActive()) throw new IllegalStateException();
 
-        if(arena.getPos1() == null || arena.getPos2() == null){ p.sendMessage(ChatColor.RED + "Dimensions unset!"); return false; }
-        if(arena.getLobbySpawn() == null){ p.sendMessage(ChatColor.RED + "LobbySpawn unset!"); return false; }
-        if(arena.getSpecSpawn() == null ){ p.sendMessage(ChatColor.RED + "SpecSpawn unset!"); return false; }
-        if(arena.getPlayerSpawns() == null || arena.getPlayerSpawns().size() == 0){ p.sendMessage(ChatColor.RED + "PlayerSpawns missing!"); return false; }
-        if(arena.getItemSpawns() == null || arena.getItemSpawns().size() == 0){ p.sendMessage(ChatColor.RED + "ItemSpawns missing!"); return false; }
+        if(arena.getPos1() == null || arena.getPos2() == null){ s.sendMessage(ChatColor.RED + "Dimensions unset!"); return false; }
+        if(arena.getLobbySpawn() == null){ s.sendMessage(ChatColor.RED + "LobbySpawn unset!"); return false; }
+        if(arena.getSpecSpawn() == null ){ s.sendMessage(ChatColor.RED + "SpecSpawn unset!"); return false; }
+        if(arena.getPlayerSpawns() == null || arena.getPlayerSpawns().isEmpty()){ s.sendMessage(ChatColor.RED + "PlayerSpawns missing!"); return false; }
+        if(arena.getItemSpawns() == null || arena.getItemSpawns().isEmpty()){ s.sendMessage(ChatColor.RED + "ItemSpawns missing!"); return false; }
 
         serializer.save(arena);
-
-        //TODO: if(!Smash.games.keySet().contains(arena.getName())) Smash.games.put(arena.getName(), this);
+        Smash.games.put(arena.getName(), this);
         World world = BukkitWorldLoader.getWorld(arena.getWorld());
         BukkitWorldLoader.evacuateWorld(world, arena.getEvacuationPoint());
         BukkitWorldLoader.backupWorld(world, Smash.worlBackupSuffix, true);
-        p.sendMessage(ChatColor.RED + "Arena " + arena.getName() + " saved!");
+        s.sendMessage(ChatColor.RED + "Arena " + arena.getName() + " saved!");
         return true;
     }
 
     public void onDelete(){
-        //TODO: if(!Smash.games.keySet().contains(arena.getName())) Smash.games.remove(arena.getName());
+        if(!Smash.games.containsKey(arena.getName())) Smash.games.remove(arena.getName());
         serializer.remove(arena);
     }
 
@@ -181,6 +195,7 @@ public class SmashGame {
 
     public void onJoin(Player p){
         if(!isReady(p)) return;
+        if(isGameActive()){ p.sendMessage(ChatColor.RED + "Game is currently ongoing!(consider spectating)"); return; }
         p.sendMessage(ChatColor.GREEN + "joining " + arena.getName() + "...");
         Smash.itemSaver.onJoin(p);
         arenaPlayers.add(p);
@@ -199,10 +214,7 @@ public class SmashGame {
             arenaPlayers.remove(p);
         else if(specPlayers.contains(p))
             specPlayers.remove(p);
-        else {
-            p.sendMessage(ChatColor.RED + "You are currently not in a Lobby!");
-            return;
-        }
+
         p.sendMessage(ChatColor.GREEN + "Returning to lobby...");
         p.teleport(loc.toBukkitLocation());
 
@@ -211,18 +223,20 @@ public class SmashGame {
         setPlayerDefault(p, GameMode.SURVIVAL);
         Smash.itemSaver.onLeave(p);
 
-        if(getPlavers(false).size() == 0 && isGameActive())
+        if(getPlavers(false).isEmpty() && isGameActive())
             onStop();
+        //TODO: updateSigns
+        //TODO: updateScoreboard
     }
 
     public void onSpectate(Player p){
+        if(!isReady(p)) return;
         p.sendMessage(ChatColor.GREEN + "Spectating:  " + arena.getName());
         Smash.itemSaver.onJoin(p);
         specPlayers.add(p);
 
         p.teleport(arena.getLobbySpawn().toBukkitLocation());
         setPlayerDefault(p, GameMode.SPECTATOR);
-
     }
 
 
@@ -247,10 +261,11 @@ public class SmashGame {
     public void onStop(){
         if(!isGameActive()) throw new IllegalStateException();
 
-
+        //TODO removeDoubleJump();
 
         for(Player p : getPlavers(true)){
             p.sendMessage(ChatColor.RED + "Smash Arena stopped!");
+            p.sendMessage(ChatColor.RED + "Evacuating...");
             onLeave(p, arena.getEvacuationPoint());
         }
         setGameActive(false);
@@ -281,7 +296,7 @@ public class SmashGame {
         setReady(true);
     }
 
-    private void onDeath(Player p){
+    public void onDeath(Player p){
         p.getInventory().clear();
 
         p.playSound(p.getEyeLocation(), Sound.ENTITY_VILLAGER_HURT, 0.5f, 1);

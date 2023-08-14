@@ -1,6 +1,8 @@
-package com.cheater78.smash.Game.Elements;
+package com.cheater78.smash.Game.Systems;
 
 import com.cheater78.smash.Config.ItemSpawnConfig;
+import com.cheater78.smash.Game.Elements.Item;
+import com.cheater78.smash.Game.Elements.Items;
 import com.cheater78.smash.Game.SmashGame;
 import com.cheater78.smash.Serialize.Serializable.Location;
 import com.cheater78.smash.Utils.BukkitWorldLoader;

@@ -1,17 +1,24 @@
 package com.cheater78.smash.Utils;
 
 import com.cheater78.smash.Serialize.Serializable.Location;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class BukkitWorldLoader {
+
+    public static World createVoidWorld(String name){
+        WorldCreator wc = new WorldCreator(name);
+        wc.environment(World.Environment.NORMAL);
+        wc.type(WorldType.FLAT);
+        wc.generatorSettings("{\"layers\": [], \"biome\":\"jungle\"}");
+        return wc.createWorld();
+    }
 
     public static void backupWorld(World world, String suffix, boolean save){
         copyWorld(world, world.getName()+suffix, save);
@@ -23,13 +30,13 @@ public class BukkitWorldLoader {
 
     public static World getWorld(String worldName){
         if(worldName == null) throw new NullPointerException();
-        if(worldName.equals("")) throw new IllegalArgumentException();
+        if(worldName.isEmpty()) throw new IllegalArgumentException();
 
         File worldFolder = new File(Bukkit.getWorldContainer().getAbsolutePath() + worldName);
         if(!worldFolder.exists()) Bukkit.getLogger().info("World: " + worldName + " doesnt exist, Creating new...");
 
         if(!isWorldLoaded(worldName))
-            return Bukkit.createWorld(new WorldCreator(worldName));
+            return createVoidWorld(worldName);
         else
             return Bukkit.getWorld(worldName);
     }
@@ -42,7 +49,7 @@ public class BukkitWorldLoader {
 
     public static void unloadWorld(String worldName, boolean save) {
         if(worldName == null) throw new NullPointerException();
-        if(worldName.equals("")) throw new IllegalArgumentException();
+        if(worldName.isEmpty()) throw new IllegalArgumentException();
         if(!Bukkit.getServer().unloadWorld(worldName, save))
             Bukkit.getLogger().warning("World: " + worldName + " could not be unloaded!");
     }
@@ -56,10 +63,21 @@ public class BukkitWorldLoader {
         }
     }
 
-    private static boolean isWorldLoaded(String worldName){
+    public static boolean isWorldLoaded(String worldName){
         try{                        Bukkit.getWorld(worldName).getName();   }
         catch (Exception e){        return false;                           }
         return true;
+    }
+
+    public static void deleteWorld(String worldName){
+        if(worldName == null) throw new NullPointerException();
+        if(worldName.isEmpty()) throw new IllegalArgumentException();
+
+        File worldFolder = new File(Bukkit.getWorldContainer().getAbsolutePath() + worldName);
+        if(!worldFolder.exists()){ Bukkit.getLogger().info("World: " + worldName + " doesnt exist, Nothing to remove..."); return; }
+
+        unloadWorld(worldName, false);
+        //TODO: REMOVE WORLD FOLDER -r
     }
 
     public static void copyWorld(World originalWorld, String newWorldName, boolean save) {
@@ -78,7 +96,9 @@ public class BukkitWorldLoader {
                     if(!target.exists())
                         if (!target.mkdirs())
                             throw new IOException("Copy: Couldn't create world directory!");
-                    String files[] = source.list();
+                    String[] files = source.list();
+                    //TODO: replace assertion
+                    assert files != null;
                     for (String file : files) {
                         File srcFile = new File(source, file);
                         File destFile = new File(target, file);

@@ -1,12 +1,17 @@
 package com.cheater78.smash.Commands;
 
 import com.cheater78.smash.Arena;
+import com.cheater78.smash.Config.PluginConfig;
 import com.cheater78.smash.Conversion.LocationString;
 import com.cheater78.smash.Events.FlightAttemp;
 import com.cheater78.smash.Events.signChange;
 import com.cheater78.smash.Files.ArenaFiles;
+import com.cheater78.smash.Game.Elements.GUI.InventoryGUI;
+import com.cheater78.smash.Game.SmashGame;
+import com.cheater78.smash.Game.Systems.PlayerManager;
 import com.cheater78.smash.Items.Items;
 import com.cheater78.smash.Smash;
+import com.cheater78.smash.Utils.BukkitWorldLoader;
 import com.cheater78.smash.World.RestoreWorld;
 import org.bukkit.*;
 import org.bukkit.block.Sign;
@@ -22,235 +27,201 @@ import java.util.*;
 
 public class smash implements TabExecutor {
 
-    public static ArrayList<Arena> arProg = new ArrayList<>();
-    public static Map<UUID, Map<Integer, ItemStack>> mainLobbyItems = new HashMap<>();
-    public static Map<UUID, Float> mainLobbyLevels = new HashMap<>();
-
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if(sender instanceof Player){
-            if(args.length >0){
-                Player p = (Player)sender;
-                if(args[0].equalsIgnoreCase("join") && hasPerm(p,"smash.join")){
-                    if(args.length > 1){
-                        if(Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null){
-                            for(Arena a: Smash.arenas){
-                                if(a.name.equalsIgnoreCase(args[1])){
-                                    if(!a.ready){
-                                        p.sendMessage(ChatColor.RED + "Arena is currently rebuilding!");
-                                        return true;
-                                    }
-                                    if(!a.gameActive){
-
-
-
-
-                                    }else {
-                                        p.sendMessage(ChatColor.RED + "Arena is currently running!");
-                                    }
-                                    return true;
-                                }
-                            }
-                            p.sendMessage(ChatColor.RED + "Arena not available!(/smash list)");
-                        }else{
-                            p.sendMessage(ChatColor.RED + "You are currently in an Arena!(/smash leave)");
-                        }
-                    }else{
-                        p.sendMessage(ChatColor.RED + "Wrong Usage!(/smash join [arena])");
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("leave") && hasPerm(p,"smash.leave")){
-                    for(Arena a: Smash.arenas){
-                        for(Player ap:a.arenaPlayer){
-                            if(ap.getName().equalsIgnoreCase(p.getName())){
-                                a.arenaPlayer.remove(p);
-                                if(a.gameActive) FlightAttemp.onLeaveFlight(p);
-                                if(a.arenaPlayer.isEmpty()){
-                                    a.gameActive = false;
-                                    FileConfiguration signConfig = signChange.getSignConfig();
-                                    for (Location loc: LocationString.KeystoLocs(signConfig.getKeys(false))){
-                                        if(signChange.getCommandFromSign(loc).contains("join")
-                                                ||signChange.getCommandFromSign(loc).contains("spectate") ){
-                                            Sign sign = (Sign) loc.getWorld().getBlockAt(loc).getState();
-                                            if(signChange.getCommandFromSign(loc).contains("join"))
-                                                sign.setLine(3,ChatColor.DARK_GRAY + "<" +ChatColor.GREEN+"join"+ChatColor.DARK_GRAY + ">");
-                                            sign.setLine(1,ChatColor.DARK_GRAY+"Players: "+a.arenaPlayer.size());
-                                            sign.update();
-                                        }
-                                    }
-                                    Arena.clearEntities(a);
-                                }
-                                p.teleport(Smash.mainLobby);
-                                if(p.getGameMode() == GameMode.SPECTATOR || p.getGameMode() == GameMode.ADVENTURE) p.setGameMode(GameMode.SURVIVAL);
-
-
-
-
-                                p.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
-
-
-                                return true;
-                            }
-                        }
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("list") && hasPerm(p,"smash.list")){
-                    p.sendMessage(ChatColor.GREEN + "Available Arenas: ");
-                    if(Smash.arenas.isEmpty()){ p.sendMessage(ChatColor.RED + "[none]"); return true; }
-                    for(Arena a: Smash.arenas){
-                        if(!a.gameActive) p.sendMessage(ChatColor.GREEN + "  " + a.name);
-                        else p.sendMessage(ChatColor.RED + "  " + a.name);
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("spectate") && hasPerm(p,"smash.spectate")){
-                    if(args.length > 1){
-                        if(Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null){
-                            for(Arena a: Smash.arenas){
-                                if(a.name.equalsIgnoreCase(args[1])){
-                                    if(a.gameActive){
-
-
-
-
-
-                                    }else {
-                                        p.sendMessage(ChatColor.RED + "Arena is not running!");
-                                    }
-                                    return true;
-                                }
-                            }
-                            p.sendMessage(ChatColor.RED + "Arena not available!(/smash list)");
-                        }else{
-                            p.sendMessage(ChatColor.RED + "You are currently in an Arena!(/smash leave)");
-                        }
-                    }else{
-                        p.sendMessage(ChatColor.RED + "Wrong Usage!(/smash join [arena])");
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("settings") && hasPerm(p,"smash.settings")){
-                    if(Arena.arenaOfPlayer(p,false) != null){
-                        Arena a = Arena.arenaOfPlayer(p,false);
-                        a.settingsGUI(p);
-                    }else if(Arena.arenaOfPlayer(p,true) != null){
-                        p.sendMessage(ChatColor.RED + "You cant change the settings while being in a Game!");
-                    }else{
-                        p.sendMessage(ChatColor.RED + "You need to be in a Game to change any settings!");
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("start") && hasPerm(p,"smash.start")){
-                    for(Arena a: Smash.arenas){
-                        for(Player ap:a.arenaPlayer){
-                            if(ap.getName().equalsIgnoreCase(p.getName())){
-
-                                FlightAttemp.start(a.arenaPlayer);
-
-
-                                return true;
-                            }
-                        }
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("stop") && hasPerm(p,"smash.stop")){
-                    for(Arena a: Smash.arenas){
-                        for(Player ap:a.arenaPlayer){
-                            if(ap.getName().equalsIgnoreCase(p.getName())){
-                                FlightAttemp.stop(a.arenaPlayer);
-
-                                return true;
-                            }
-                        }
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("config") && hasPerm(p,"smash.config")){
-                    if(args.length < 2){ sender.sendMessage(ChatColor.RED + "Wrong usage!(/smash config [arena] [option])"); return true; }
-                    if(!Smash.games.keySet().contains(args[2])){ sender.sendMessage(ChatColor.RED + "Arena: " + args[2] + " does not exist!"); return true; }
-
-                    Smash.games.get(args[2]).onConfig(sender, args);
-                    return true;
-
-                }else if(args[0].equalsIgnoreCase("new") && hasPerm(p,"smash.new")){
-                    if(!args[1].isEmpty()){
-                        for(Arena a:arProg){
-                            if(a.name.equalsIgnoreCase(args[1])){
-                                p.sendMessage(ChatColor.RED + "Arena " + args[1] + " does already exist!");
-                                return true;
-                            }
-                        }
-                        p.sendTitle(ChatColor.DARK_RED + "Creating new Arena", ChatColor.GREEN + "generating...", 4, 10000000, 0);
-                        if(Bukkit.getWorld(args[1]) == null){
-                            WorldCreator wc = new WorldCreator(args[1]);
-                            wc.environment(World.Environment.NORMAL);
-                            wc.type(WorldType.FLAT);
-                            wc.generatorSettings("{\"layers\": [], \"biome\":\"jungle\"}");
-                            wc.createWorld();
-                            Objects.requireNonNull(Bukkit.getWorld(args[1])).setKeepSpawnInMemory(false);
-                            if(p.getGameMode() == GameMode.CREATIVE)
-                                p.setFlying(true);
-                        }
-                        arProg.add(new Arena(args[1], false));
-                        Objects.requireNonNull(Bukkit.getWorld(args[1])).setGameRule(GameRule.DO_MOB_SPAWNING, false);
-                        p.teleport(new Location(Bukkit.getWorld(args[1]), 0, 100, 0, 0, 0));
-                        p.sendTitle("","",0,1,0);
-                        p.sendMessage(ChatColor.GREEN +"Arena " + args[1] + " created!");
-                        return true;
-                    }else{
-                        p.sendMessage(ChatColor.RED +"Usage: /smash new [ArenaName]");
-                    }
-                }else if(args[0].equalsIgnoreCase("save") && hasPerm(p,"smash.save")){
-                    if(args.length > 1){
-
-                        p.sendMessage(ChatColor.RED + "Arena not found!");
-                    }else{
-                        p.sendMessage(ChatColor.RED + "Wrong Usage!(/smash save [arena])");
-                    }
-                    return true;
-                }else if(args[0].equalsIgnoreCase("delete") && hasPerm(p,"smash.delete")){
-                    if(args.length > 1){
-                        for(Arena a:arProg){
-                            if(a.name.equalsIgnoreCase(args[1]) || ArenaFiles.getFile().get(a.name) != null){
-                                Arena.delete(a.name);
-                                p.sendMessage(ChatColor.DARK_RED + "Arena deleted!");
-                                p.sendMessage(ChatColor.GREEN + "Undo with /smash save [arena](Irreversible after /smash reset)");
-                            }else {
-                                p.sendMessage(ChatColor.RED + "Arena does not exist!");
-                            }
-                            return true;
-                        }
-                    }else{
-                        p.sendMessage(ChatColor.RED + "Wrong Usage!(/smash delete [arena])");
-                        return true;
-                    }
-                }else if(args[0].equalsIgnoreCase("reset") && hasPerm(p,"smash.reset")){
-                    for(Arena a:Smash.arenas){
-                        for(Player rap: a.arenaPlayer){
-                            rap.sendMessage(ChatColor.DARK_RED + "Smash PLugin RESET! - returning to lobby...)");
-                            rap.teleport(Smash.mainLobby);
-                            rap.getInventory().clear();
-                            for(Integer i = 0; i < mainLobbyItems.get(rap.getUniqueId()).size(); i++)
-                                rap.getInventory().setItem(i, mainLobbyItems.get(rap.getUniqueId()).get(i));
-                            rap.setLevel((int)mainLobbyLevels.get(rap.getUniqueId()).floatValue());
-                            rap.setExp(mainLobbyLevels.get(rap.getUniqueId()) %1);
-                        }
-                    }
-                    smash.arProg.clear();
-                    Smash.arenas.clear();
-                    for(String s: Arena.listArena()) smash.arProg.add(new Arena(s, true));
-                    for(String s: Arena.listArena()) Smash.arenas.add(new Arena(s, true));
-                    mainLobbyLevels.clear();
-                    mainLobbyItems.clear();
-                    p.sendMessage(ChatColor.DARK_RED + "RESET! - loaded files(non saved arenas are gone)");
-                    return true;
-                }else return false;
-            }
-        }else{
-            System.out.println("This Command can only be executed as Player!");
+        if (args.length < 1) {
+            printHelp(sender);
             return true;
         }
-        return false;
+        //Player only Cmds: join, leave, spectate, settings
+        if (sender instanceof Player) {
+            Player p = (Player) sender;
+            if (args[0].equalsIgnoreCase("join") && hasPerm(p, "smash.join")) {
+                if (args.length < 2) {
+                    p.sendMessage(ChatColor.RED + "Wrong Usage!(/smash join [game])");
+                    return true;
+                }
+                if (PlayerManager.isInGame(p)) {
+                    p.sendMessage(ChatColor.RED + "You are currently in a Game!(/smash leave)");
+                    return true;
+                }
+                PlayerManager.getGame(p).onJoin(p);
+                return true;
+            }
+            if (args[0].equalsIgnoreCase("leave") && hasPerm(p, "smash.leave")) {
+                if (!PlayerManager.isInGame(p)) {
+                    p.sendMessage(ChatColor.RED + "You aren't currently in a Game!");
+                    return true;
+                }
+                PlayerManager.getGame(p).onLeave(p, PlayerManager.getGame(p).getArena().getEvacuationPoint());
+                return true;
+            }
+            if (args[0].equalsIgnoreCase("spectate") && hasPerm(p, "smash.spectate")) {
+                if (args.length < 2) {
+                    p.sendMessage(ChatColor.RED + "Wrong Usage!(/smash spectate [arena])");
+                    return true;
+                }
+                if (PlayerManager.isInGame(p)) {
+                    p.sendMessage(ChatColor.RED + "You are currently a Game!(/smash leave)");
+                    return true;
+                }
+                PlayerManager.getGame(p).onSpectate(p);
+                return true;
+            }
+            if (args[0].equalsIgnoreCase("settings") && hasPerm(p, "smash.settings")) {
+                if (!PlayerManager.isInGame(p)) {
+                    p.sendMessage(ChatColor.RED + "You need to be in a Lobby to change Game Settings!");
+                    return true;
+                }
+                if (PlayerManager.getGame(p).isGameActive()) {
+                    p.sendMessage(ChatColor.RED + "You can't change Game Settings while the Game is in progress!");
+                    return true;
+                }
+                InventoryGUI.settingsGUI(p, PlayerManager.getGame(p));
+                return true;
+            }
+            if (args[0].equalsIgnoreCase("start") && hasPerm(sender, "smash.start.self")) {
+                if (!PlayerManager.isInGame(p)) {
+                    p.sendMessage(ChatColor.RED + "You aren't currently in a Game!");
+                    return true;
+                }
+                if (PlayerManager.getGame(p).isGameActive()) {
+                    p.sendMessage(ChatColor.RED + "Game has already started!");
+                    return true;
+                }
+                PlayerManager.getGame(p).onStart(p);
+            }
+            if (args[0].equalsIgnoreCase("stop") && hasPerm(sender, "smash.stop.self")) {
+                if (!PlayerManager.isInGame(p)) {
+                    p.sendMessage(ChatColor.RED + "You aren't currently in a Game!");
+                    return true;
+                }
+                if (!PlayerManager.getGame(p).isGameActive()) {
+                    p.sendMessage(ChatColor.RED + "Game is currently not running!");
+                    return true;
+                }
+                PlayerManager.getGame(p).onStop();
+            }
+        }
+
+        //other Cmds: new, config, reset, list, remove, | start, stop
+        if (args[0].equalsIgnoreCase("list") && hasPerm(sender, "smash.list")) {
+            sender.sendMessage(ChatColor.GREEN + "Available Arenas: ");
+            if (Smash.games.isEmpty()) {
+                sender.sendMessage(ChatColor.RED + "[none]");
+                return true;
+            }
+            for (SmashGame g : Smash.games.values()) {
+                if (g.isGameActive()) sender.sendMessage(ChatColor.GOLD + "  " + g.getArena().getName() + "(running)");
+                else if (!g.isReady())
+                    sender.sendMessage(ChatColor.RED + "  " + g.getArena().getName() + "(unavailable)");
+                else sender.sendMessage(ChatColor.GREEN + "  " + g.getArena().getName());
+            }
+            return true;
+        }
+        if (args[0].equalsIgnoreCase("start") && hasPerm(sender, "smash.start.other")) {
+            if (args.length < 2) {
+                sender.sendMessage(ChatColor.RED + "Wrong Usage!(/smash start [game])");
+                return true;
+            }
+            if (!Smash.games.containsKey(args[1])) {
+                sender.sendMessage(ChatColor.RED + "Arena " + args[1] + " does not exist!");
+                return true;
+            }
+            Smash.games.get(args[1]).onStart(null);
+        }
+        if (args[0].equalsIgnoreCase("stop") && hasPerm(sender, "smash.stop.other")) {
+            if (args.length < 2) {
+                sender.sendMessage(ChatColor.RED + "Wrong Usage!(/smash stop [game])");
+                return true;
+            }
+            if (!Smash.games.containsKey(args[1])) {
+                sender.sendMessage(ChatColor.RED + "Arena " + args[1] + " does not exist!");
+                return true;
+            }
+            Smash.games.get(args[1]).onStart(null);
+        }
+        if (args[0].equalsIgnoreCase("config") && hasPerm(sender, "smash.config")) {
+            Smash.games.get(args[2]).onConfig(sender, args);
+        }
+        if (args[0].equalsIgnoreCase("new") && hasPerm(sender, "smash.new")) {
+            if (args.length < 2) {
+                sender.sendMessage(ChatColor.RED + "Wrong Usage!(/smash new [newGameName])");
+                return true;
+            }
+            if (Smash.games.containsKey(args[1])) {
+                sender.sendMessage(ChatColor.RED + "Game " + args[1] + " does already exist!");
+                return true;
+            }
+            //TODO: message or smth
+            Smash.games.put(args[1], new SmashGame(args[1], args[1], false));
+        }
+        if (args[0].equalsIgnoreCase("save") && hasPerm(sender, "smash.save")) {
+            if (args.length < 2) {
+                sender.sendMessage(ChatColor.RED + "Wrong Usage!(/smash save [game])");
+                return true;
+            }
+            if (!Smash.games.containsKey(args[1])) {
+                sender.sendMessage(ChatColor.RED + "Game " + args[1] + " does not exist!");
+                return true;
+            }
+            Smash.games.get(args[1]).onSave(sender);
+        }
+        if (args[0].equalsIgnoreCase("remove") && hasPerm(sender, "smash.remove")) {
+            if (args.length < 2) {
+                sender.sendMessage(ChatColor.RED + "Wrong Usage!(/smash remove [game])");
+                return true;
+            }
+            if (!Smash.games.containsKey(args[1])) {
+                sender.sendMessage(ChatColor.RED + "Game " + args[1] + " does not exist!");
+                return true;
+            }
+            BukkitWorldLoader.deleteWorld(args[1]);
+            //TODO: message or smth
+        }
+        if (args[0].equalsIgnoreCase("reset") && hasPerm(sender, "smash.reset")) {
+            //Evacuation
+            for (Player p : Bukkit.getServer().getOnlinePlayers()) {
+                if (!PlayerManager.isInGame(p)) continue;
+                p.sendMessage(ChatColor.DARK_RED + "Smash Plugin RESET! - evacuating...)");
+                p.teleport(PlayerManager.getGame(p).getArena().getEvacuationPoint().toBukkitLocation());
+                Smash.itemSaver.onLeave(p);
+            }
+            //RESET
+            Smash.games.clear();
+            Smash.init();
+            //TODO: Check all systems
+
+            sender.sendMessage(ChatColor.DARK_RED + "RESET! - reloaded all files -> (non saved Games are gone)");
+        }
+
+        printHelp(sender);
+        return true;
     }
 
 
+    /*
+    Permissions:
 
+    [Player]
+    smash.join
+    smash.leave
+    smash.spectate
+    smash.list
+    smash.settings
+    smash.start.self
+    smash.stop.self
+
+    [Admin]
+    smash.new
+    smash.config
+    smash.save
+    smash.remove
+    smash.reset
+    smash.start.other
+    smash.stop.other
+
+     */
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
@@ -259,43 +230,28 @@ public class smash implements TabExecutor {
         if(sender instanceof Player){
             Player p = (Player) sender;
             if (args.length == 1){
-                if(p.hasPermission("smash.join") && (Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null)) ret.add("join");
-                if(p.hasPermission("smash.leave") && (Arena.arenaOfPlayer(p,true) != null || Arena.arenaOfPlayer(p,false) != null)) ret.add("leave");
-                if(p.hasPermission("smash.spectate") && (Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null)) ret.add("spectate");
+                if(p.hasPermission("smash.join") && (!PlayerManager.isInGame(p))) ret.add("join");
+                if(p.hasPermission("smash.leave") && (PlayerManager.isInGame(p))) ret.add("leave");
+                if(p.hasPermission("smash.spectate") && (!PlayerManager.isInGame(p))) ret.add("spectate");
                 if(p.hasPermission("smash.list")) ret.add("list");
-                if(p.hasPermission("smash.settings") && Arena.arenaOfPlayer(p,false) != null) ret.add("settings");
-                if(p.hasPermission("smash.start") && Arena.arenaOfPlayer(p,false) != null) ret.add("start");
-                if(p.hasPermission("smash.stop") && Arena.arenaOfPlayer(p,true) != null) ret.add("stop");
-                if(p.hasPermission("smash.config") && (Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null)) ret.add("config");
-                if(p.hasPermission("smash.new") && (Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null)) ret.add("new");
-                if(p.hasPermission("smash.save") && (Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null)) ret.add("save");
-                if(p.hasPermission("smash.delete") && (Arena.arenaOfPlayer(p,true) == null && Arena.arenaOfPlayer(p,false) == null)) ret.add("delete");
+                if(p.hasPermission("smash.settings") && (PlayerManager.isInGame(p))) ret.add("settings");
+                if(p.hasPermission("smash.start") && (PlayerManager.isInGame(p))) ret.add("start");
+                if(p.hasPermission("smash.stop") && (PlayerManager.isInGame(p))) ret.add("stop");
+                if(p.hasPermission("smash.config") && (!PlayerManager.isInGame(p))) ret.add("config");
+                if(p.hasPermission("smash.new") && (!PlayerManager.isInGame(p))) ret.add("new");
+                if(p.hasPermission("smash.save") && (!PlayerManager.isInGame(p))) ret.add("save");
+                if(p.hasPermission("smash.remove") && (!PlayerManager.isInGame(p))) ret.add("remove");
                 if(p.hasPermission("smash.reset")) ret.add("reset");
             }
             if(args.length == 2){
-                if(args[0].equalsIgnoreCase("join")){
-                    for(Arena a:Smash.arenas){
-                        ret.add(a.name);
-                    }
-                }else if(args[0].equalsIgnoreCase("spectate")){
-                    for(Arena a:Smash.arenas){
-                        if(a.gameActive)
-                            ret.add(a.name);
-                    }
-                }else if(args[0].equalsIgnoreCase("config")){
-                    for(Arena a:arProg){
-                        ret.add(a.name);
-                    }
-                }else if(args[0].equalsIgnoreCase("save")){
-                    for(Arena a:arProg){
-                        ret.add(a.name);
-                    }
-                }else if(args[0].equalsIgnoreCase("delete")){
-                    for(Arena a:Smash.arenas){
-                        ret.add(a.name);
-                    }
+                if(args[0].equalsIgnoreCase("join")
+                || args[0].equalsIgnoreCase("spectate")
+                || args[0].equalsIgnoreCase("config")
+                || args[0].equalsIgnoreCase("save")
+                || args[0].equalsIgnoreCase("remove"))
+                {
+                    ret.addAll(Smash.games.keySet());
                 }
-
             }
             if(args.length == 3){
                 if(args[0].equalsIgnoreCase("config")){
@@ -303,15 +259,28 @@ public class smash implements TabExecutor {
                     if(p.hasPermission("smash.config.pos2")) ret.add("pos2");
                     if(p.hasPermission("smash.config.setLobbySpawn")) ret.add("setLobbySpawn");
                     if(p.hasPermission("smash.config.setSpecSpawn")) ret.add("setSpecSpawn");
-                    if(p.hasPermission("smash.config.setPlayerSpawn")) ret.add("setPlayerSpawn");
-                    if(p.hasPermission("smash.config.setItemSpawn")) ret.add("setItemSpawn");
+                    if(p.hasPermission("smash.config.setPlayerSpawn")) ret.add("addPlayerSpawn");
+                    if(p.hasPermission("smash.config.setItemSpawn")) ret.add("addItemSpawn");
+                    if(p.hasPermission("smash.config.remPlayerSpawn")) ret.add("remPlayerSpawn");
+                    if(p.hasPermission("smash.config.remItemSpawn")) ret.add("remItemSpawn");
                 }
             }
+
             if(args.length == 4){
-                if(args[2].equalsIgnoreCase("setPlayerSpawn") || args[2].equalsIgnoreCase("setItemSpawn")){
-                    ret.add("4");
+                if(args[3].equalsIgnoreCase("remPlayerSpawn")){
+                    if(!Smash.games.containsKey(args[1])) return ret;
+                    for (int i = 0; i < Smash.games.get(args[1]).getArena().getPlayerSpawns().size(); i++){
+                        ret.add(Integer.toString(i));
+                    }
+                }
+                if(args[3].equalsIgnoreCase("remItemSpawn")){
+                    if(!Smash.games.containsKey(args[1])) return ret;
+                    for (int i = 0; i < Smash.games.get(args[1]).getArena().getItemSpawns().size(); i++){
+                        ret.add(Integer.toString(i));
+                    }
                 }
             }
+
         }
 
         return ret;
@@ -325,6 +294,11 @@ public class smash implements TabExecutor {
             p.sendMessage(ChatColor.RED + "You do not have permission to execute this command!");
         }
         return p.hasPermission(permission);
+    }
+
+    private void printHelp(CommandSender s){
+        //TODO: implementHelp
+        s.sendMessage("Sorry still nothing here");
     }
 
 }

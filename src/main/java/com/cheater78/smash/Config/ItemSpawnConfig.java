@@ -8,6 +8,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class ItemSpawnConfig {
@@ -15,7 +16,7 @@ public class ItemSpawnConfig {
     private static File configFile;
     private static FileConfiguration config;
 
-    private static Map<String, Integer> distribution;
+    private static Map<String, Integer> distribution = new HashMap<>();
 
     public static void load() {
         if(!configFile.exists()) throw new IllegalStateException("Loading ItemDistribution.yml failed(run init() first)");
