@@ -58,13 +58,6 @@ public class ItemsDep {
         return all;
     }
 
-    public static boolean isSmashItem(ItemStack iStack){
-        for(ItemStack is : getAll(false)){
-            if(iStack.getType() == is.getType() && iStack.getItemMeta().getLore().equals(is.getItemMeta().getLore())){
-                return true;
-            }
-        }
-        return false;
-    }
+
 
 }

@@ -2,26 +2,43 @@ package com.cheater78.smash.Game.Systems;
 
 import com.cheater78.smash.Config.ItemSpawnConfig;
 import com.cheater78.smash.Game.Elements.Item;
-import com.cheater78.smash.Game.Elements.Items;
 import com.cheater78.smash.Game.SmashGame;
 import com.cheater78.smash.Serialize.Serializable.Location;
+import com.cheater78.smash.Smash;
 import com.cheater78.smash.Utils.BukkitWorldLoader;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ItemManager {
+public class ItemManager implements Listener {
+
     private Map<Item, Integer> items;
-    private boolean itemPoolChanged = true;
-    private List<Item> itemPool;
+
+    private List<Item> getItemPool(){
+        List<Item> itemPool = new ArrayList<>();
+        for(Item item : items.keySet()){
+            for(int i = 0; i < items.get(item); i++){
+                itemPool.add(item);
+            }
+        }
+        return itemPool;
+    }
 
     public ItemManager(){
         items = new HashMap<>();
-        itemPool = new ArrayList<>();
         for(Item i : Items.getAll())
             items.put(i, ItemSpawnConfig.getItemOccurence(i));
+
+        Bukkit.getServer().getPluginManager().registerEvents(this, Smash.plugin);
     }
 
     public int getItemOccurence(Item item){ return items.get(item); }
@@ -60,14 +77,41 @@ public class ItemManager {
 
     }
 
-
-    private void updateItemPool(){
-        itemPool.clear();
-        for(Item item : items.keySet()){
-            for(int i = 0; i < items.get(item); i++){
-                itemPool.add(item);
+    public static boolean isSmashItem(ItemStack iStack){
+        for(ItemStack is : getAll(false)){
+            if(iStack.getType() == is.getType() && iStack.getItemMeta().getLore().equals(is.getItemMeta().getLore())){
+                return true;
             }
         }
-        itemPoolChanged = false;
+        return false;
     }
+
+    @EventHandler
+    public void onPickUp(EntityPickupItemEvent e){
+        if(e.getEntity() instanceof Player){
+            Player p = (Player) e.getEntity();
+            org.bukkit.entity.Item i = e.getItem();
+            ItemStack is = i.getItemStack();
+
+            if(Arena.arenaOfPlayer(p,true) != null){
+                Arena a = Arena.arenaOfPlayer(p,true);
+
+                if(is.getType() == Material.FIREWORK_STAR && !is.isSimilar(Items.gravityGrenade())){
+                    e.setCancelled(true);
+                }
+
+                if(p.getInventory().getItem(4) == null && Items.isValid(is)){
+                    if(is.getType() == Material.POPPY) is.setAmount(5);
+                    else if(is.getType() == Material.FIREWORK_ROCKET) is.setAmount(5);
+                    else is.setAmount(1);
+                    p.getInventory().setItem(4,is);
+                    i.remove();
+                }
+                e.setCancelled(true);
+
+            }
+
+        }
+    }
+
 }

@@ -1,7 +1,6 @@
 package com.cheater78.smash.Config;
 
 import com.cheater78.smash.Game.Elements.Item;
-import com.cheater78.smash.Game.Elements.Items;
 import com.cheater78.smash.Smash;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -14,6 +13,8 @@ public class GameConfig {
 
     private static File configFile;
     private static FileConfiguration config;
+
+    public static int itemHotbarSlot = 4;
 
     public static int smasherDmg = 60;
     public static double playerDmgMul = 7;

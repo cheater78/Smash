@@ -24,6 +24,7 @@ public abstract class Item implements Listener{
 
     String name;
     ItemStack iStack;
+    int pickupAmount = 1;
 
     public Item(String name, Material material){
         if(name == null) throw new NullPointerException();
@@ -55,4 +56,11 @@ public abstract class Item implements Listener{
 
     public String getName(){ return name; }
 
+    public int getPickupAmount() {
+        return pickupAmount;
+    }
+
+    public void setPickupAmount(int pickupAmount) {
+        this.pickupAmount = pickupAmount;
+    }
 }
