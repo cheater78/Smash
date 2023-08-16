@@ -25,8 +25,8 @@ public class Arena implements Serializable {
     private ArrayList<Location> playerSpawns;
     private ArrayList<Location> itemSpawns;
 
-    private int itemSpawnDelay = 30;
-    private int mobDespawnDelay = 20;
+    private int itemSpawnDelay = 20*20;
+    private int mobDespawnDelay = 20*20;
 
     /*
     Arena is an unsafe data object, validate all data before construction / set

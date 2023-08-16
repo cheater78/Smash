@@ -10,6 +10,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
+import java.util.UUID;
+
 public class FlappyRocket extends Item {
 
     private final int flappyRocketAmount = 5;
@@ -20,7 +22,6 @@ public class FlappyRocket extends Item {
         super(ChatColor.AQUA + "FlappyRocket",          Material.FIREWORK_ROCKET);
         setPickupAmount(flappyRocketAmount);
     }
-
 
     @EventHandler
     public void onRightClick(PlayerInteractEvent e) {
@@ -34,6 +35,4 @@ public class FlappyRocket extends Item {
         p.getInventory().setItemInMainHand(i);
         e.setCancelled(true);
     }
-
-
 }

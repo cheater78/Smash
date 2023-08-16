@@ -65,6 +65,8 @@ public class Serializer <T extends Serializable> {
     public List<T> loadAll(){
         String json= getFile();
         Container all = gson.fromJson(json, Container.class);
+        if(all == null || all.content == null)
+            return new ArrayList<>();
         return all.content;
     }
 

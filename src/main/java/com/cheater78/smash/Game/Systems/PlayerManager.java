@@ -10,38 +10,39 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class PlayerManager implements Listener {
-    private static final Map<Player, SmashGame> players = new HashMap<>();
+    private static final Map<UUID, SmashGame> players = new HashMap<>();
 
     public static void init(){
         for(Player player: Bukkit.getServer().getOnlinePlayers())
-            players.put(player, null);
+            players.put(player.getUniqueId(), null);
     }
 
     public static boolean isInGame(Player p){
-        return players.get(p) != null;
+        return players.get(p.getUniqueId()) != null;
     }
 
     public static void setGame(Player p, SmashGame s){
-        players.put(p, s);
+        players.put(p.getUniqueId(), s);
     }
 
     public static SmashGame getGame(Player p){
-        return players.get(p);
+        return players.get(p.getUniqueId());
     }
 
     public static void remGame(Player p){
-        players.put(p, null);
+        players.put(p.getUniqueId(), null);
     }
 
     @EventHandler
     void onJoin(PlayerJoinEvent e){
-        players.put(e.getPlayer(), null);
+        players.put(e.getPlayer().getUniqueId(), null);
     }
     @EventHandler
     void onLeave(PlayerQuitEvent e){
-        players.remove(e.getPlayer());
+        players.remove(e.getPlayer().getUniqueId());
     }
 
 }

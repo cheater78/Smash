@@ -14,6 +14,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.List;
+import java.util.UUID;
 
 public class GravityGrenade extends Item {
 
@@ -90,5 +91,4 @@ public class GravityGrenade extends Item {
             e.setCancelled(true);
 
     }
-
 }

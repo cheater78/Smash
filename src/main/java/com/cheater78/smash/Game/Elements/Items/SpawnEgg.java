@@ -57,7 +57,7 @@ public class SpawnEgg extends Item {
                 if(se.isOnGround()){
                     Entity mob = p.getWorld().spawnEntity(se.getLocation(), mobs.get( (new Random()).nextInt(mobs.size()) ));
                     se.remove();
-                    Smash.sceduler.scheduleSyncDelayedTask(Smash.plugin, mob::remove, 20L *game.getArena().getMobDespawnDelay());
+                    Smash.sceduler.scheduleSyncDelayedTask(Smash.plugin, mob::remove, game.getArena().getMobDespawnDelay());
                     cancel();
                 }
             }

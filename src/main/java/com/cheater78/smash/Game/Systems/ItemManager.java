@@ -1,11 +1,14 @@
 package com.cheater78.smash.Game.Systems;
 
-import com.cheater78.smash.Config.ItemSpawnConfig;
+import com.cheater78.smash.Config.GameConfig;
 import com.cheater78.smash.Game.Elements.Item;
+import com.cheater78.smash.Game.Elements.Items.*;
 import com.cheater78.smash.Game.SmashGame;
 import com.cheater78.smash.Serialize.Serializable.Location;
+import com.cheater78.smash.Serialize.Serializer;
 import com.cheater78.smash.Smash;
 import com.cheater78.smash.Utils.BukkitWorldLoader;
+import com.google.common.collect.Lists;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -13,15 +16,80 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ItemManager implements Listener {
 
-    private Map<Item, Integer> items;
+    SmashGame game;
+    private final Map<Item, Integer> items;
+    private final Serializer<Item> serializer;
+    private BukkitTask spawnHandle;
+
+    public static List<Item> all = Lists.newArrayList(
+            new RocketLauncher(),
+            new FlameThrower(),
+            new FlappyRocket(),
+            new GodApple(),
+            new GrapplingHook(),
+            new GravityGrenade(),
+            new HealShroom(),
+            new SavePlat(),
+            new Smasher(),
+            new SpawnEgg(),
+            new SugarRush(),
+            new TNT()
+    );
+
+    public ItemManager(SmashGame game){
+        this.items = new HashMap<>();
+        this.game = game;
+        this.serializer = new Serializer<>("Arenas/" + game.getArena().getName() + "/items.json");
+        setupItems();
+
+        Bukkit.getServer().getPluginManager().registerEvents(this, Smash.plugin);
+    }
+
+    public void start(){
+        spawnHandle = new BukkitRunnable() {
+            @Override
+            public void run() {
+                spawnItems(game);
+            }
+        }.runTaskTimer(Smash.plugin, 20, game.getArena().getItemSpawnDelay());
+    }
+
+    public void stop(){
+        spawnHandle.cancel();
+    }
+
+    private void setupItems(){
+        List<Item> missing = all;
+        List<Item> fromFile = serializer.loadAll();
+
+        for(Item item : fromFile){
+            items.put(item, item.getOccurence());
+            missing.remove(item);
+        }
+        for(Item item : missing){
+            items.put(item, 0);
+            item.setOccurence(0);
+            serializer.save(item);
+        }
+        for(Item item : items.keySet())
+            Bukkit.getServer().getPluginManager().registerEvents(item, Smash.plugin);
+    }
+
+    public int getItemOccurence(Item item){ return items.get(item); }
+    public void changeItem(Item item, int occurence){
+        if(item == null) throw new NullPointerException();
+        if(occurence < 0) throw new IllegalArgumentException();
+        items.put(item, occurence);
+        item.setOccurence(occurence);
+        serializer.save(item);
+    }
 
     private List<Item> getItemPool(){
         List<Item> itemPool = new ArrayList<>();
@@ -33,85 +101,51 @@ public class ItemManager implements Listener {
         return itemPool;
     }
 
-    public ItemManager(){
-        items = new HashMap<>();
-        for(Item i : Items.getAll())
-            items.put(i, ItemSpawnConfig.getItemOccurence(i));
-
-        Bukkit.getServer().getPluginManager().registerEvents(this, Smash.plugin);
-    }
-
-    public int getItemOccurence(Item item){ return items.get(item); }
-
-    public void setItemSpawnOccurence(Item item, int occ){
-        if(item == null) throw new NullPointerException();
-        if(occ < 0) throw new IllegalArgumentException();
-        if(!items.containsKey(item)) throw new IllegalArgumentException();
-        items.put(item,occ);
-        itemPoolChanged = true;
-    }
 
     public void spawnItems(SmashGame game){
         if(!game.isGameActive()) return;
-        if(itemPoolChanged) updateItemPool();
 
         for(Location loc : game.getArena().getItemSpawns()){
             BukkitWorldLoader.getWorld(game.getArena().getWorld())
                     .dropItemNaturally(
                             loc.toBukkitLocation(),
-                            itemPool.get((int) (Math.random() * itemPool.size())).get(false)
+                            getItemPool().get((int) (Math.random() * getItemPool().size())).get(false)
                             );
         }
     }
 
-    public void spawnItem(SmashGame game){
-        if(!game.isGameActive()) return;
-        if(itemPoolChanged) updateItemPool();
-        Location loc = game.getArena().getItemSpawns()
-                .get((int) (Math.random() * game.getArena().getItemSpawns().size()));
-        BukkitWorldLoader.getWorld(game.getArena().getWorld())
-                .dropItemNaturally(
-                        loc.toBukkitLocation(),
-                        itemPool.get((int) (Math.random() * itemPool.size())).get(false)
-                );
-
-    }
-
-    public static boolean isSmashItem(ItemStack iStack){
-        for(ItemStack is : getAll(false)){
-            if(iStack.getType() == is.getType() && iStack.getItemMeta().getLore().equals(is.getItemMeta().getLore())){
-                return true;
+    public static Item getSmashItem(ItemStack iStack){
+        for(Item i : all){
+            if(iStack.getType() == i.get(false).getType() && iStack.getItemMeta().getLore().equals(i.get(false).getItemMeta().getLore())){
+                return i;
             }
         }
-        return false;
+        return null;
     }
 
     @EventHandler
     public void onPickUp(EntityPickupItemEvent e){
-        if(e.getEntity() instanceof Player){
-            Player p = (Player) e.getEntity();
-            org.bukkit.entity.Item i = e.getItem();
-            ItemStack is = i.getItemStack();
+        if(!(e.getEntity() instanceof Player)) return;
+        Player p = (Player) e.getEntity();
+        if(!PlayerManager.isInGame(p)) return;
+        ItemStack is = e.getItem().getItemStack();
+        SmashGame game = PlayerManager.getGame(p);
 
-            if(Arena.arenaOfPlayer(p,true) != null){
-                Arena a = Arena.arenaOfPlayer(p,true);
-
-                if(is.getType() == Material.FIREWORK_STAR && !is.isSimilar(Items.gravityGrenade())){
-                    e.setCancelled(true);
-                }
-
-                if(p.getInventory().getItem(4) == null && Items.isValid(is)){
-                    if(is.getType() == Material.POPPY) is.setAmount(5);
-                    else if(is.getType() == Material.FIREWORK_ROCKET) is.setAmount(5);
-                    else is.setAmount(1);
-                    p.getInventory().setItem(4,is);
-                    i.remove();
-                }
-                e.setCancelled(true);
-
-            }
-
+        if(     (is.getType() == Material.FIREWORK_STAR && !is.isSimilar(new GravityGrenade().get(false)))
+             || (is.getType() == Material.CREEPER_SPAWN_EGG && !is.isSimilar(new SpawnEgg().get(false)))    ){
+            e.setCancelled(true);
+            return;
         }
+
+        Item item = getSmashItem(is);
+        if(p.getInventory().getItem(GameConfig.itemHotbarSlot) == null && item != null){
+            is.setAmount(item.getPickupAmount());
+            p.getInventory().setItem(GameConfig.itemHotbarSlot, is);
+            e.getItem().remove();
+        } else if (item == null) {
+            e.getItem().remove();
+        }
+        e.setCancelled(true);
     }
 
 }

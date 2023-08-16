@@ -3,12 +3,14 @@ package com.cheater78.smash.Game;
 import com.cheater78.smash.Commands.smash;
 import com.cheater78.smash.Config.PluginConfig;
 import com.cheater78.smash.Game.Elements.GUI.InventoryGUI;
+import com.cheater78.smash.Game.Systems.DoubleJumpHandler;
 import com.cheater78.smash.Game.Systems.ItemManager;
 import com.cheater78.smash.Serialize.Serializable.Arena;
 import com.cheater78.smash.Serialize.Serializable.Location;
 import com.cheater78.smash.Serialize.Serializer;
 import com.cheater78.smash.Smash;
 import com.cheater78.smash.Utils.BukkitWorldLoader;
+import com.google.common.collect.Lists;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -28,10 +30,9 @@ public class SmashGame {
     private ItemManager itemManager;
 
     //MATCH STATES
-    private boolean ready = false;
+    private boolean ready;
     private boolean gameActive = false;
 
-    private boolean playerCountChanged;
     private ArrayList<Player> arenaPlayers;
     private ArrayList<Player> specPlayers;
 
@@ -40,16 +41,15 @@ public class SmashGame {
     private int maxExp = PluginConfig.defaultMaxDamage;
 
     //Serialize
-    Serializer<Arena> serializer = new Serializer<>("Arenas.json");
+    Serializer<Arena> serializer;
 
     public SmashGame(String name, String worldName, boolean fromFile){
         if(name == null    || worldName == null) throw new NullPointerException();
         if(name.isEmpty() || worldName.isEmpty()) throw new IllegalArgumentException();
-
         this.arenaPlayers = new ArrayList<>();
         this.specPlayers = new ArrayList<>();
-        this.playerCountChanged = true;
 
+        this.serializer = new Serializer<>("Arenas/" + name + "/arena.json");
         if(!fromFile){
             // new SmashGame / Arena
             World world = BukkitWorldLoader.getWorld(worldName); //implicit world creation
@@ -62,7 +62,7 @@ public class SmashGame {
             this.arena = serializer.load(new UUID(name.hashCode(), name.hashCode()));
         }
 
-        this.itemManager = new ItemManager();
+        this.itemManager = new ItemManager(this);
         this.ready = arena.isValid();
     }
 
@@ -206,7 +206,8 @@ public class SmashGame {
 
         InventoryGUI.setLobbyItems(p);
 
-
+        //TODO: updateSigns
+        //TODO: updateScoreboard
     }
 
     public void onLeave(Player p, Location loc){
@@ -218,7 +219,7 @@ public class SmashGame {
         p.sendMessage(ChatColor.GREEN + "Returning to lobby...");
         p.teleport(loc.toBukkitLocation());
 
-        //TODO: removeDoubleJump(p);
+        DoubleJumpHandler.remPlayer(p);
 
         setPlayerDefault(p, GameMode.SURVIVAL);
         Smash.itemSaver.onLeave(p);
@@ -249,7 +250,7 @@ public class SmashGame {
         for(Player ap: arenaPlayers){
             ap.teleport(arena.getPlayerSpawns().get((int)(Math.random()*arena.getPlayerSpawns().size())).toBukkitLocation());
             setPlayerStart(p);
-            //TODO: initDoubleJump(p);
+            DoubleJumpHandler.addPlayer(p);
             ap.sendMessage(ChatColor.GREEN + "Game started!");
             ap.sendTitle(ChatColor.GREEN + "Game started!","",5,10,10);
         }
@@ -261,7 +262,7 @@ public class SmashGame {
     public void onStop(){
         if(!isGameActive()) throw new IllegalStateException();
 
-        //TODO removeDoubleJump();
+        DoubleJumpHandler.remPlayers(Lists.newArrayList(getPlavers(true)));
 
         for(Player p : getPlavers(true)){
             p.sendMessage(ChatColor.RED + "Smash Arena stopped!");
@@ -269,17 +270,19 @@ public class SmashGame {
             onLeave(p, arena.getEvacuationPoint());
         }
         setGameActive(false);
+        //TODO: updateSigns
+        //TODO: updateScoreboard
         onRebuild();
     }
 
     public void onEnd(){
         if(!isGameActive()) throw new IllegalStateException();
 
-
-
         for(Player p : getPlavers(true))
             teleportToLobby(p, arena.getEvacuationPoint());
         setGameActive(false);
+        //TODO: updateSigns
+        //TODO: updateScoreboard
         onRebuild();
     }
 
@@ -288,7 +291,7 @@ public class SmashGame {
 
     public void onRebuild(){
         if(isGameActive()) throw new IllegalStateException();
-        if(getPlavers(true).size() > 0) throw new IllegalStateException();
+        if(!getPlavers(true).isEmpty()) throw new IllegalStateException();
         setReady(false);
 
         BukkitWorldLoader.loadBackup(arena.getWorld(), Smash.worlBackupSuffix, false);
@@ -316,6 +319,9 @@ public class SmashGame {
             p.sendTitle(ChatColor.DARK_RED + "GameOver!", ChatColor.GOLD + "/smash leave" + ChatColor.GREEN + " to return MainLobby",5, 20, 40);
             arenaPlayers.remove(p);
             specPlayers.add(p);
+
+            //TODO: updateSigns
+            //TODO: updateScoreboard
 
             if(arenaPlayers.size() <= 1){
                 // Game -> Game Over
@@ -351,6 +357,8 @@ public class SmashGame {
 
         for(Player dp: getPlavers(true))
             dp.sendMessage(ChatColor.DARK_RED + p.getName() + ChatColor.RED + " died!");
+
+        //TODO: updateScoreboard
 
         Smash.sceduler.scheduleSyncDelayedTask(Smash.plugin, () -> {
             p.setExp(0);

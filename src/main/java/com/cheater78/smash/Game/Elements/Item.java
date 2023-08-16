@@ -1,5 +1,6 @@
 package com.cheater78.smash.Game.Elements;
 
+import com.cheater78.smash.Serialize.Serializable.Serializable;
 import com.cheater78.smash.Smash;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -12,8 +13,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.UUID;
 
-public abstract class Item implements Listener{
+public abstract class Item implements Listener, Serializable {
 
     public static final Enchantment ENA = Enchantment.PROTECTION_ENVIRONMENTAL;
     private static final boolean showEnch = false;
@@ -22,9 +24,11 @@ public abstract class Item implements Listener{
             ChatColor.DARK_GRAY + "Smash by c78"
     );
 
-    String name;
-    ItemStack iStack;
-    int pickupAmount = 1;
+    private UUID uuid;
+
+    private String name;
+    private ItemStack iStack;
+    private int pickupAmount = 1;
 
     public Item(String name, Material material){
         if(name == null) throw new NullPointerException();
@@ -44,6 +48,8 @@ public abstract class Item implements Listener{
         iMeta.setLore(iTag);
         iMeta.setUnbreakable(true);
         iStack.setItemMeta(iMeta);
+
+        this.uuid = new UUID(name.hashCode(), name.hashCode());
     }
 
     public ItemStack get(boolean enchanted){
@@ -59,8 +65,32 @@ public abstract class Item implements Listener{
     public int getPickupAmount() {
         return pickupAmount;
     }
-
     public void setPickupAmount(int pickupAmount) {
         this.pickupAmount = pickupAmount;
+    }
+
+    public int getOccurence() {
+        if(iStack.getAmount() > 1)
+            return iStack.getAmount();
+        else
+            if(iStack.containsEnchantment(ENA))
+                return 1;
+            else
+                return 0;
+
+    }
+    public void setOccurence(int occurence) {
+        if(occurence == 0){
+            iStack.removeEnchantment(ENA);
+            iStack.setAmount(0);
+        }else{
+            iStack.addUnsafeEnchantment(ENA, 10);
+            iStack.setAmount(occurence);
+        }
+    }
+
+    @Override
+    public UUID getUuid() {
+        return new UUID(getName().hashCode(), getName().hashCode());
     }
 }

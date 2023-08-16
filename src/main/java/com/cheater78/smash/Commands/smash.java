@@ -1,27 +1,15 @@
 package com.cheater78.smash.Commands;
 
-import com.cheater78.smash.Arena;
-import com.cheater78.smash.Config.PluginConfig;
-import com.cheater78.smash.Conversion.LocationString;
-import com.cheater78.smash.Events.FlightAttemp;
-import com.cheater78.smash.Events.signChange;
-import com.cheater78.smash.Files.ArenaFiles;
 import com.cheater78.smash.Game.Elements.GUI.InventoryGUI;
 import com.cheater78.smash.Game.SmashGame;
 import com.cheater78.smash.Game.Systems.PlayerManager;
-import com.cheater78.smash.Items.Items;
 import com.cheater78.smash.Smash;
 import com.cheater78.smash.Utils.BukkitWorldLoader;
-import com.cheater78.smash.World.RestoreWorld;
 import org.bukkit.*;
-import org.bukkit.block.Sign;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.potion.PotionEffect;
 
 import java.util.*;
 
@@ -176,6 +164,7 @@ public class smash implements TabExecutor {
                 sender.sendMessage(ChatColor.RED + "Game " + args[1] + " does not exist!");
                 return true;
             }
+            Smash.games.get(args[1]).onDelete();
             BukkitWorldLoader.deleteWorld(args[1]);
             //TODO: message or smth
         }
